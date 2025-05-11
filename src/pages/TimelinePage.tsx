@@ -22,7 +22,7 @@ import {
 export default function TimelinePage() {
   const [view, setView] = useState("list");
   const [searchQuery, setSearchQuery] = useState("");
-  const [moodFilter, setMoodFilter] = useState("");
+  const [moodFilter, setMoodFilter] = useState("all");
   
   // Sample data for echoes
   const sampleEchoes = [
@@ -78,9 +78,9 @@ export default function TimelinePage() {
     const matchesSearch = searchQuery 
       ? echo.title.toLowerCase().includes(searchQuery.toLowerCase()) 
       : true;
-    const matchesMood = moodFilter 
-      ? echo.mood === moodFilter 
-      : true;
+    const matchesMood = moodFilter === "all" 
+      ? true 
+      : echo.mood === moodFilter;
     return matchesSearch && matchesMood;
   });
   
@@ -130,7 +130,7 @@ export default function TimelinePage() {
                 <SelectValue placeholder="Filter by mood" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All moods</SelectItem>
+                <SelectItem value="all">All moods</SelectItem>
                 <SelectItem value="hopeful">Hopeful</SelectItem>
                 <SelectItem value="motivated">Motivated</SelectItem>
                 <SelectItem value="grateful">Grateful</SelectItem>
@@ -209,7 +209,7 @@ export default function TimelinePage() {
                 <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                   We couldn't find any echoes matching your search. Try adjusting your filters or search query.
                 </p>
-                <Button onClick={() => { setSearchQuery(''); setMoodFilter(''); }} variant="outline">
+                <Button onClick={() => { setSearchQuery(''); setMoodFilter('all'); }} variant="outline">
                   Clear Filters
                 </Button>
               </div>
