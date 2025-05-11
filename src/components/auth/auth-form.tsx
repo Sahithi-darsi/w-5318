@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import { WaveformAnimation } from "@/components/ui/waveform-animation";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type FormMode = "login" | "signup" | "forgot-password";
 
@@ -30,6 +32,7 @@ export function AuthForm({ mode, onChangeMode, onSubmit }: AuthFormProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   
   // Password strength calculation
   const calculatePasswordStrength = (password: string): number => {
@@ -144,7 +147,10 @@ export function AuthForm({ mode, onChangeMode, onSubmit }: AuthFormProps) {
   };
   
   const renderFormContent = () => {
-    switch (mode) {
+    // Use type guards to ensure type safety in the switch statement
+    const currentMode: FormMode = mode;
+    
+    switch (currentMode) {
       case "login":
         return (
           <>
@@ -192,10 +198,10 @@ export function AuthForm({ mode, onChangeMode, onSubmit }: AuthFormProps) {
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <input
-                    id="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  <Checkbox 
+                    id="remember-me" 
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked === true)}
                   />
                   <Label htmlFor="remember-me" className="text-sm">Remember me</Label>
                 </div>
