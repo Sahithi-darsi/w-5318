@@ -72,7 +72,7 @@ export function AuthForm({ mode, onChangeMode, onSubmit }: AuthFormProps) {
         return;
       }
       
-      // Direct Supabase authentication
+      // Fix for the TypeScript error - using type guards
       if (mode === "login") {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
