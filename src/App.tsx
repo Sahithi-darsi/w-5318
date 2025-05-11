@@ -10,6 +10,9 @@ import WelcomePage from "./pages/WelcomePage";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import RecordPage from "./pages/RecordPage";
+import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/SettingsPage";
+import TimelinePage from "./pages/TimelinePage";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +30,9 @@ const App = () => (
           <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/record" element={<RecordPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/timeline" element={<TimelinePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

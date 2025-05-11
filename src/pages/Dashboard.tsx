@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { WaveformAnimation } from "@/components/ui/waveform-animation";
 import { ArrowRight, Clock, Plus, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Navbar from "@/components/Navbar";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -34,21 +35,7 @@ export default function Dashboard() {
   
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-gradient-echo text-white py-6 px-4 md:px-12">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <WaveformAnimation />
-              <span className="ml-2 font-semibold text-lg">EchoVerse</span>
-            </div>
-            
-            <Button variant="ghost" className="text-white hover:bg-white/10">
-              Settings
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Navbar />
       
       {/* Main content */}
       <main className="max-w-6xl mx-auto px-4 md:px-12 py-8">
