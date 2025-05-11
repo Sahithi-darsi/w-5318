@@ -14,6 +14,7 @@ import {
 import { WaveformAnimation } from "@/components/ui/waveform-animation";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type FormMode = "login" | "signup" | "forgot-password";
 
@@ -27,6 +28,8 @@ export function AuthForm({ mode, onChangeMode, onSubmit }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Password strength calculation
@@ -63,10 +66,70 @@ export function AuthForm({ mode, onChangeMode, onSubmit }: AuthFormProps) {
     try {
       if (mode === "signup" && password !== confirmPassword) {
         toast.error("Passwords do not match");
+        setIsSubmitting(false);
         return;
       }
       
-      // Pass form data to parent component
+      // Direct Supabase authentication
+      if (mode === "login") {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error) {
+          console.error("Login error:", error);
+          toast.error(error.message || "Failed to log in. Please check your credentials.");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (data.user) {
+          toast.success("Logged in successfully!");
+          // onSubmit will handle the navigation
+        }
+      } else if (mode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+            },
+          },
+        });
+        
+        if (error) {
+          console.error("Signup error:", error);
+          toast.error(error.message || "Failed to create account. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (data.user) {
+          toast.success("Account created successfully!");
+          // onSubmit will handle the navigation
+        }
+      } else if (mode === "forgot-password") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + "/reset-password",
+        });
+        
+        if (error) {
+          console.error("Password reset error:", error);
+          toast.error(error.message || "Failed to send reset instructions. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        toast.success("Password reset instructions sent to your email!");
+        onChangeMode("login");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Pass form data to parent component for navigation
       onSubmit({ 
         email, 
         password: mode !== "forgot-password" ? password : undefined,
@@ -75,7 +138,7 @@ export function AuthForm({ mode, onChangeMode, onSubmit }: AuthFormProps) {
       
     } catch (error) {
       console.error("Auth submission error:", error);
-      toast.error("An error occurred. Please try again.");
+      toast.error("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -172,6 +235,31 @@ export function AuthForm({ mode, onChangeMode, onSubmit }: AuthFormProps) {
             
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first-name">First Name</Label>
+                    <Input
+                      id="first-name"
+                      type="text"
+                      placeholder="John"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last-name">Last Name</Label>
+                    <Input
+                      id="last-name"
+                      type="text"
+                      placeholder="Doe"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input

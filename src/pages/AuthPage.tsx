@@ -1,9 +1,10 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { WaveformAnimation } from "@/components/ui/waveform-animation";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type FormMode = "login" | "signup" | "forgot-password";
 
@@ -17,6 +18,18 @@ export default function AuthPage() {
                       location.pathname === "/forgot-password" ? "forgot-password" : "login";
   
   const [formMode, setFormMode] = useState<FormMode>(defaultMode);
+  
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        navigate('/dashboard');
+      }
+    };
+    
+    checkAuth();
+  }, [navigate]);
   
   // Update URL when form mode changes
   const handleChangeMode = (mode: FormMode) => {
@@ -34,22 +47,11 @@ export default function AuthPage() {
     password?: string; 
     confirmPassword?: string 
   }) => {
-    // Simulate API request delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    // Mock authentication logic
+    // Handle post-authentication navigation
     if (formMode === "login") {
-      console.log("Logging in with:", data.email);
-      toast.success("Logged in successfully!");
       navigate("/dashboard");
     } else if (formMode === "signup") {
-      console.log("Signing up with:", data.email);
-      toast.success("Account created successfully!");
       navigate("/welcome");
-    } else {
-      console.log("Password reset requested for:", data.email);
-      toast.success("Password reset email sent!");
-      handleChangeMode("login");
     }
   };
   

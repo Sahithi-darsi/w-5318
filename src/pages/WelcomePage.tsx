@@ -12,24 +12,43 @@ export default function WelcomePage() {
   const navigate = useNavigate();
   const [showTutorial, setShowTutorial] = useState(false);
   const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(true);
   
   // Get user profile on load
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('first_name')
-          .eq('id', user.id)
-          .single();
+      try {
+        setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
         
-        if (data?.first_name) {
-          setUsername(data.first_name);
+        if (user) {
+          console.log("User authenticated:", user.id);
+          
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', user.id)
+            .single();
+          
+          if (error) {
+            console.error("Error fetching profile:", error);
+            throw error;
+          }
+          
+          if (data?.first_name) {
+            console.log("Profile data:", data);
+            setUsername(data.first_name);
+          } else {
+            console.log("No profile data found for user");
+          }
+        } else {
+          console.log("No authenticated user found, redirecting to login");
+          navigate('/login');
         }
-      } else {
-        // Redirect to login if no user is authenticated
-        navigate('/login');
+      } catch (error) {
+        console.error("Error in fetchUserProfile:", error);
+      } finally {
+        setLoading(false);
       }
     };
     
@@ -38,12 +57,14 @@ export default function WelcomePage() {
   
   // Show tutorial after a slight delay
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowTutorial(true);
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    if (!loading) {
+      const timer = setTimeout(() => {
+        setShowTutorial(true);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
   
   const handleTutorialClose = () => {
     setShowTutorial(false);
@@ -52,6 +73,14 @@ export default function WelcomePage() {
   const handleCreateFirstEcho = () => {
     navigate("/dashboard");
   };
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <WaveformAnimation isActive />
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-gradient-echo-light dark:bg-gradient-to-br dark:from-echo-past dark:to-echo-present/40 flex flex-col justify-center items-center p-6">
