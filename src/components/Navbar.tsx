@@ -127,7 +127,7 @@ export default function Navbar() {
   };
   
   return (
-    <header className="sticky top-0 z-50 w-full bg-gradient-echo text-white py-4 px-4 md:px-12 shadow-md">
+    <header className="bg-gradient-to-r from-echo-past via-echo-present to-echo-future dark:text-white text-primary-foreground sticky top-0 z-50 shadow-md py-4 px-4 md:px-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -144,7 +144,7 @@ export default function Navbar() {
                 <NavigationMenuItem>
                   <Link to="/dashboard">
                     <NavigationMenuLink 
-                      className={`${navigationMenuTriggerStyle()} font-medium ${isActive("/dashboard") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/20"}`}
+                      className={`${navigationMenuTriggerStyle()} font-medium ${isActive("/dashboard") ? "bg-primary/25 text-primary-foreground" : "bg-white/20 text-white font-semibold border border-white/30 hover:bg-white/30 hover:border-white/50"}`}
                     >
                       Dashboard
                     </NavigationMenuLink>
@@ -153,7 +153,7 @@ export default function Navbar() {
                 <NavigationMenuItem>
                   <Link to="/timeline">
                     <NavigationMenuLink 
-                      className={`${navigationMenuTriggerStyle()} font-medium ${isActive("/timeline") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/20"}`}
+                      className={`${navigationMenuTriggerStyle()} font-medium ${isActive("/timeline") ? "bg-primary/25 text-primary-foreground" : "bg-white/20 text-white font-semibold border border-white/30 hover:bg-white/30 hover:border-white/50"}`}
                     >
                       Timeline
                     </NavigationMenuLink>
@@ -162,7 +162,7 @@ export default function Navbar() {
                 <NavigationMenuItem>
                   <Link to="/record">
                     <NavigationMenuLink 
-                      className={`${navigationMenuTriggerStyle()} font-medium ${isActive("/record") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/20"}`}
+                      className={`${navigationMenuTriggerStyle()} font-medium ${isActive("/record") ? "bg-primary/25 text-primary-foreground" : "bg-white/20 text-white font-semibold border border-white/30 hover:bg-white/30 hover:border-white/50"}`}
                     >
                       Record
                     </NavigationMenuLink>
@@ -293,7 +293,7 @@ export default function Navbar() {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                <Button variant="ghost" size="icon" className="text-primary-foreground dark:text-white hover:bg-primary/10 dark:hover:bg-white/10 relative">
                   <Menu className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>

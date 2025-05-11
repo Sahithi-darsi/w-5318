@@ -53,13 +53,14 @@ export default function Dashboard() {
   const [featuredEcho, setFeaturedEcho] = useState<string | null>(null);
   const [echoes, setEchoes] = useState<Echo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
   
   // Stats for dashboard
   const [stats, setStats] = useState([
-    { label: "Total Echoes", value: 0 },
-    { label: "Unlocked", value: 0 },
-    { label: "Locked", value: 0 },
-    { label: "Avg Duration", value: "0:00" },
+    { label: "Total Echoes", value: 0, filter: 'all' as const },
+    { label: "Unlocked", value: 0, filter: 'unlocked' as const },
+    { label: "Locked", value: 0, filter: 'locked' as const },
+    { label: "Avg Duration", value: "0:00", filter: null },
   ]);
   
   useEffect(() => {
@@ -125,22 +126,21 @@ export default function Dashboard() {
           
           // Update stats
           const totalEchoes = data.length;
-          const unlockedCount = data.filter(echo => echo.unlocked).length;
-          const lockedCount = totalEchoes - unlockedCount;
+          const unlocked = data.filter(echo => echo.unlocked).length;
+          const locked = data.length - unlocked;
           
           // Calculate average duration
-          let totalDuration = 0;
-          data.forEach(echo => {
-            totalDuration += echo.duration;
-          });
-          const avgDuration = totalEchoes > 0 ? Math.floor(totalDuration / totalEchoes) : 0;
-          const avgDurationFormatted = `${Math.floor(avgDuration / 60)}:${String(avgDuration % 60).padStart(2, '0')}`;
+          const totalDuration = data.reduce((sum, echo) => sum + echo.duration, 0);
+          const avgSeconds = data.length > 0 ? Math.round(totalDuration / data.length) : 0;
+          const avgMinutes = Math.floor(avgSeconds / 60);
+          const avgRemainingSeconds = avgSeconds % 60;
+          const avgDuration = `${avgMinutes}:${avgRemainingSeconds.toString().padStart(2, '0')}`;
           
           setStats([
-            { label: "Total Echoes", value: totalEchoes },
-            { label: "Unlocked", value: unlockedCount },
-            { label: "Locked", value: lockedCount },
-            { label: "Avg Duration", value: avgDurationFormatted },
+            { label: "Total Echoes", value: data.length, filter: 'all' as const },
+            { label: "Unlocked", value: unlocked, filter: 'unlocked' as const },
+            { label: "Locked", value: locked, filter: 'locked' as const },
+            { label: "Avg Duration", value: avgDuration, filter: null },
           ]);
         }
       } catch (error) {
@@ -202,11 +202,19 @@ export default function Dashboard() {
         </div>
         
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {stats.map((stat, index) => (
-            <Card key={index} className="hover:shadow-md transition-all hover:border-echo-present/30">
-              <CardContent className="p-4 flex flex-col items-center justify-center">
-                <p className="text-3xl font-bold text-echo-present">{stat.value}</p>
+            <Card 
+              key={index} 
+              className={`text-center transition-all ${stat.filter ? 'cursor-pointer hover:shadow-md' : ''} ${stat.filter === activeFilter ? 'ring-2 ring-echo-present' : ''}`}
+              onClick={() => stat.filter && setActiveFilter(stat.filter)}
+            >
+              <CardHeader className="pb-2">
+                <div className={`text-2xl font-bold ${index === 0 ? 'text-echo-future' : index === 1 ? 'text-echo-present' : index === 2 ? 'text-echo-past' : 'text-muted-foreground'}`}>
+                  {typeof stat.value === 'number' ? stat.value : stat.value}
+                </div>
+              </CardHeader>
+              <CardContent>
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
               </CardContent>
             </Card>
@@ -264,9 +272,30 @@ export default function Dashboard() {
           </div>
         ) : echoes.length > 0 ? (
           <div>
-            <h2 className="text-xl font-medium mb-4">All Echoes</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-medium">
+                {activeFilter === 'all' ? 'All Echoes' : 
+                 activeFilter === 'unlocked' ? 'Unlocked Echoes' : 'Locked Echoes'}
+              </h2>
+              {activeFilter !== 'all' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setActiveFilter('all')}
+                >
+                  Show All
+                </Button>
+              )}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {echoes.map((echo) => (
+              {echoes
+                .filter(echo => {
+                  if (activeFilter === 'all') return true;
+                  if (activeFilter === 'unlocked') return echo.unlocked;
+                  if (activeFilter === 'locked') return !echo.unlocked;
+                  return true;
+                })
+                .map((echo) => (
                 <div 
                   key={echo.id} 
                   className={`glass-card p-6 rounded-xl transition-all ${echo.unlocked ? 'hover:shadow-md hover:border-echo-present/30 cursor-pointer' : 'opacity-80'}`}
