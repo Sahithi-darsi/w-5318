@@ -2,7 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { WaveformAnimation } from "@/components/ui/waveform-animation";
-import { ArrowRight, Clock, Plus } from "lucide-react";
+import { ArrowRight, Clock, Plus, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
@@ -78,7 +78,7 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="py-3">
-                  <WaveformAnimation />
+                  <WaveformAnimation isActive={!echo.isLocked} />
                 </div>
                 
                 <div className="mt-4 flex justify-between items-center">
@@ -92,7 +92,7 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <Button variant="ghost" size="sm" className="text-echo-present">
-                      Play
+                      <Play className="mr-1 h-4 w-4" /> Play
                     </Button>
                   )}
                 </div>
