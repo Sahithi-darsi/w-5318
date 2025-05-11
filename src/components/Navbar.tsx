@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -44,10 +45,14 @@ export default function Navbar() {
         const shownNotificationIds = JSON.parse(localStorage.getItem('shownNotifications') || '[]');
         
         // Get unlocked echoes from database
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData.user) return;
+        
         const { data, error } = await supabase
           .from('echoes')
           .select('id, title')
           .eq('unlocked', true)
+          .eq('user_id', userData.user.id)
           .limit(5);
           
         if (error) throw error;
@@ -91,11 +96,34 @@ export default function Navbar() {
     };
     
     checkUnlockedEchoes();
+    
+    // Set up real-time subscription to track newly unlocked echoes
+    const channel = supabase
+      .channel('unlocked-echoes-notifications')
+      .on('postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'echoes',
+          filter: 'unlocked=eq.true' 
+        }, 
+        () => checkUnlockedEchoes()
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [toast]);
   
   const handleNotificationClick = (id: string) => {
     setHasUnreadNotifications(false);
     window.location.href = `/echo/${id}`;
+  };
+  
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
   
   return (
@@ -212,7 +240,7 @@ export default function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Log out</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -293,7 +321,7 @@ export default function Navbar() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Log out</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

@@ -27,11 +27,14 @@ export default function WelcomePage() {
         if (data?.first_name) {
           setUsername(data.first_name);
         }
+      } else {
+        // Redirect to login if no user is authenticated
+        navigate('/login');
       }
     };
     
     fetchUserProfile();
-  }, []);
+  }, [navigate]);
   
   // Show tutorial after a slight delay
   useEffect(() => {
