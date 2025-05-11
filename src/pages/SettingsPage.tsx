@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Calendar, Lock, Settings, User } from "lucide-react";
+import { Bell, Calendar, Lock, Settings, User, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
@@ -16,20 +16,123 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  
+  // User data state
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // Settings states
   const [timeCapsuledEnabled, setTimeCapsuleEnabled] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [unlockNotifications, setUnlockNotifications] = useState(true);
   const [notificationFrequency, setNotificationFrequency] = useState("immediate");
   const [darkMode, setDarkMode] = useState(false);
   
-  const handleSaveSettings = () => {
-    toast({
-      title: "Settings saved",
-      description: "Your preferences have been updated successfully."
-    });
+  // Fetch user data on component mount
+  useEffect(() => {
+    async function fetchUserData() {
+      try {
+        setLoading(true);
+        
+        // Get authenticated user
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !authUser) {
+          throw new Error(authError?.message || "Not authenticated");
+        }
+        
+        setUser(authUser);
+        
+        // Get user profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+        } else if (profileData) {
+          setProfile(profileData);
+          
+          // Get user settings
+          const { data: settingsData, error: settingsError } = await supabase
+            .from('user_settings')
+            .select('*')
+            .eq('user_id', authUser.id)
+            .single();
+            
+          if (!settingsError && settingsData) {
+            // Update state with user settings
+            setTimeCapsuleEnabled(settingsData.time_capsule_enabled || false);
+            setEmailNotifications(settingsData.email_notifications || true);
+            setUnlockNotifications(settingsData.unlock_notifications || true);
+            setNotificationFrequency(settingsData.notification_frequency || "immediate");
+            setDarkMode(settingsData.dark_mode || false);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading user data:", error);
+        toast({
+          title: "Error loading settings",
+          description: "Please try again or contact support.",
+          variant: "destructive"
+        });
+        // Redirect to login if not authenticated
+        navigate("/login");
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchUserData();
+  }, [toast, navigate]);
+  
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      
+      // Save settings to database
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          time_capsule_enabled: timeCapsuledEnabled,
+          email_notifications: emailNotifications,
+          unlock_notifications: unlockNotifications,
+          notification_frequency: notificationFrequency,
+          dark_mode: darkMode,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Settings saved",
+        description: "Your preferences have been updated successfully."
+      });
+    } catch (error: any) {
+      console.error("Error saving settings:", error);
+      toast({
+        title: "Error saving settings",
+        description: error.message || "Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
   };
   
   const handleTimeCapsuleToggle = (checked: boolean) => {
@@ -66,15 +169,35 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Sidebar */}
           <div className="md:col-span-1">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center mb-6">
-                  <Avatar className="h-24 w-24 mb-4">
-                    <AvatarImage src="/placeholder.svg" alt="User" />
-                    <AvatarFallback className="text-2xl">JD</AvatarFallback>
-                  </Avatar>
-                  <h3 className="text-xl font-medium mb-1">Jane Doe</h3>
-                  <p className="text-sm text-muted-foreground">jane.doe@example.com</p>
+            <Card className="h-full">
+              <CardContent className="p-8">
+                <div className="flex flex-col items-center mb-8">
+                  {loading ? (
+                    <div className="flex flex-col items-center justify-center h-32 w-32 mb-6">
+                      <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <Avatar className="h-32 w-32 mb-6 border-4 border-background shadow-lg">
+                      <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt={profile?.first_name || "User"} />
+                      <AvatarFallback className="text-3xl font-bold">
+                        {profile?.first_name?.[0]}{profile?.last_name?.[0] || ''}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <h3 className="text-2xl font-bold mb-2">
+                    {loading ? (
+                      <div className="h-8 w-40 bg-muted animate-pulse rounded"></div>
+                    ) : (
+                      `${profile?.first_name || ''} ${profile?.last_name || ''}`
+                    )}
+                  </h3>
+                  <p className="text-md text-muted-foreground">
+                    {loading ? (
+                      <div className="h-6 w-48 bg-muted animate-pulse rounded"></div>
+                    ) : (
+                      user?.email
+                    )}
+                  </p>
                 </div>
                 
                 <Tabs defaultValue="account" className="w-full">
@@ -118,9 +241,9 @@ export default function SettingsPage() {
                       <div className="flex justify-between items-center pb-4 border-b">
                         <div>
                           <p className="font-medium">Email Address</p>
-                          <p className="text-sm text-muted-foreground">jane.doe@example.com</p>
+                          <p className="text-sm text-muted-foreground">{user?.email}</p>
                         </div>
-                        <Button variant="outline" size="sm">Change</Button>
+                        <div className="px-3 py-1 text-xs bg-muted rounded-md text-muted-foreground">Cannot be changed</div>
                       </div>
                       
                       <div className="flex justify-between items-center pb-4 border-b">
@@ -344,8 +467,19 @@ export default function SettingsPage() {
             </Tabs>
             
             <div className="mt-6 flex justify-end">
-              <Button onClick={handleSaveSettings} className="bg-echo-present text-white hover:bg-echo-past">
-                Save All Settings
+              <Button 
+                onClick={handleSaveSettings} 
+                className="bg-echo-present text-white hover:bg-echo-past"
+                disabled={saving || loading}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save All Settings"
+                )}
               </Button>
             </div>
           </div>
