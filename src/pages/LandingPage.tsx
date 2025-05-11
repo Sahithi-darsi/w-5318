@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { WaveformAnimation } from "@/components/ui/waveform-animation";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import Navbar from "@/components/Navbar";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
+      <Navbar />
+      
       {/* Hero Section */}
       <section className="flex-1 flex flex-col md:flex-row items-center justify-center px-4 md:px-12 py-16 md:py-24 bg-gradient-echo-light dark:bg-gradient-echo overflow-hidden">
         <div className="md:w-1/2 text-center md:text-left mb-12 md:mb-0">

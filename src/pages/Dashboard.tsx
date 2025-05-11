@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { WaveformAnimation } from "@/components/ui/waveform-animation";
@@ -29,7 +28,7 @@ const getMoodStyles = (mood: string) => {
 };
 
 // Helper function to format date
-const formatDate = (dateString: Date) => {
+const formatDate = (dateString: string) => {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
@@ -37,68 +36,123 @@ const formatDate = (dateString: Date) => {
   }).format(new Date(dateString));
 };
 
+type Echo = {
+  id: string;
+  title: string;
+  created_at: string;
+  unlock_date: string;
+  duration: number;
+  unlocked: boolean;
+  mood: string;
+  audio_url: string;
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [hasUnlocked, setHasUnlocked] = useState(false);
-  const [featuredEcho, setFeaturedEcho] = useState<number | null>(null);
-  
-  // Sample data for echoes
-  const sampleEchoes = [
-    { 
-      id: 1, 
-      title: "Letter to myself one year from now", 
-      createdAt: new Date("2025-05-11"), 
-      unlockDate: new Date("2026-05-11"),
-      duration: "1:34",
-      isLocked: true,
-      mood: "hopeful"
-    },
-    { 
-      id: 2, 
-      title: "Reflection on my goals", 
-      createdAt: new Date("2025-05-05"), 
-      unlockDate: new Date("2025-05-12"),
-      duration: "2:45",
-      isLocked: false,
-      mood: "motivated"
-    },
-  ];
+  const [featuredEcho, setFeaturedEcho] = useState<string | null>(null);
+  const [echoes, setEchoes] = useState<Echo[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // Stats for dashboard
-  const stats = [
-    { label: "Total Echoes", value: sampleEchoes.length },
-    { label: "Unlocked", value: sampleEchoes.filter(echo => !echo.isLocked).length },
-    { label: "Locked", value: sampleEchoes.filter(echo => echo.isLocked).length },
-    { label: "Avg Duration", value: "2:10" },
-  ];
+  const [stats, setStats] = useState([
+    { label: "Total Echoes", value: 0 },
+    { label: "Unlocked", value: 0 },
+    { label: "Locked", value: 0 },
+    { label: "Avg Duration", value: "0:00" },
+  ]);
   
   useEffect(() => {
-    // Check for newly unlocked echoes
-    const checkUnlockedEchoes = async () => {
+    // Fetch echoes from Supabase
+    const fetchEchoes = async () => {
       try {
-        // In a real app, this would be a query to your Supabase database
-        const unlockedEchoes = sampleEchoes.filter(echo => !echo.isLocked);
+        setLoading(true);
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData.user) {
+          navigate('/login');
+          return;
+        }
         
-        if (unlockedEchoes.length > 0) {
-          setHasUnlocked(true);
-          setFeaturedEcho(unlockedEchoes[0].id);
+        const { data, error } = await supabase
+          .from('echoes')
+          .select('*')
+          .eq('user_id', userData.user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        if (data) {
+          setEchoes(data as Echo[]);
+          
+          // Check for unlocked echoes
+          const unlockedEchoes = data.filter(echo => echo.unlocked);
+          if (unlockedEchoes.length > 0) {
+            setHasUnlocked(true);
+            setFeaturedEcho(unlockedEchoes[0].id);
+          }
+          
+          // Update stats
+          const totalEchoes = data.length;
+          const unlockedCount = data.filter(echo => echo.unlocked).length;
+          const lockedCount = totalEchoes - unlockedCount;
+          
+          // Calculate average duration
+          let totalDuration = 0;
+          data.forEach(echo => {
+            totalDuration += echo.duration;
+          });
+          const avgDuration = totalEchoes > 0 ? Math.floor(totalDuration / totalEchoes) : 0;
+          const avgDurationFormatted = `${Math.floor(avgDuration / 60)}:${String(avgDuration % 60).padStart(2, '0')}`;
+          
+          setStats([
+            { label: "Total Echoes", value: totalEchoes },
+            { label: "Unlocked", value: unlockedCount },
+            { label: "Locked", value: lockedCount },
+            { label: "Avg Duration", value: avgDurationFormatted },
+          ]);
         }
       } catch (error) {
-        console.error("Error checking for unlocked echoes:", error);
+        console.error("Error fetching echoes:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load your echoes.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
     };
     
-    checkUnlockedEchoes();
-  }, []);
+    fetchEchoes();
+    
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('echoes-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'echoes' }, 
+        fetchEchoes
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [navigate]);
   
   const handleCreateEcho = () => {
     navigate("/record");
   };
   
-  const handleEchoClick = (echoId: number, isLocked: boolean) => {
+  const handleEchoClick = (echoId: string, isLocked: boolean) => {
     if (!isLocked) {
       navigate(`/echo/${echoId}`);
     }
+  };
+  
+  const formatDuration = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
   };
   
   return (
@@ -128,7 +182,7 @@ export default function Dashboard() {
         </div>
         
         {/* Featured Echo - shows if there's a newly unlocked echo */}
-        {hasUnlocked && featuredEcho && (
+        {hasUnlocked && featuredEcho && echoes.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-medium mb-4 flex items-center">
               <Sparkles className="mr-2 h-5 w-5 text-echo-future" />
@@ -142,15 +196,15 @@ export default function Dashboard() {
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <h3 className="font-medium text-lg mb-1">
-                      {sampleEchoes.find(echo => echo.id === featuredEcho)?.title}
+                      {echoes.find(echo => echo.id === featuredEcho)?.title}
                     </h3>
                     <div className="flex gap-2 items-center text-sm text-muted-foreground mb-2">
                       <Calendar className="h-3 w-3" />
-                      <span>Created on {formatDate(sampleEchoes.find(echo => echo.id === featuredEcho)?.createdAt || new Date())}</span>
+                      <span>Created on {formatDate(echoes.find(echo => echo.id === featuredEcho)?.created_at || "")}</span>
                     </div>
                   </div>
-                  <Badge className={getMoodStyles(sampleEchoes.find(echo => echo.id === featuredEcho)?.mood || "")}>
-                    {sampleEchoes.find(echo => echo.id === featuredEcho)?.mood.charAt(0).toUpperCase() + sampleEchoes.find(echo => echo.id === featuredEcho)?.mood.slice(1)}
+                  <Badge className={getMoodStyles(echoes.find(echo => echo.id === featuredEcho)?.mood || "")}>
+                    {echoes.find(echo => echo.id === featuredEcho)?.mood.charAt(0).toUpperCase() + echoes.find(echo => echo.id === featuredEcho)?.mood.slice(1)}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">
@@ -161,7 +215,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex justify-between items-center mt-4">
                   <div className="text-sm text-muted-foreground">
-                    {sampleEchoes.find(echo => echo.id === featuredEcho)?.duration}
+                    {formatDuration(echoes.find(echo => echo.id === featuredEcho)?.duration || 0)}
                   </div>
                   <Button className="bg-echo-future hover:bg-echo-future/80 text-white">
                     <Play className="mr-1 h-4 w-4" /> Play Now
@@ -172,22 +226,26 @@ export default function Dashboard() {
           </div>
         )}
         
-        {sampleEchoes.length > 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <WaveformAnimation isActive />
+          </div>
+        ) : echoes.length > 0 ? (
           <div>
             <h2 className="text-xl font-medium mb-4">All Echoes</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sampleEchoes.map((echo) => (
+              {echoes.map((echo) => (
                 <div 
                   key={echo.id} 
-                  className={`glass-card p-6 rounded-xl transition-all ${echo.isLocked ? 'opacity-80' : 'hover:shadow-md hover:border-echo-present/30 cursor-pointer'}`}
-                  onClick={() => handleEchoClick(echo.id, echo.isLocked)}
+                  className={`glass-card p-6 rounded-xl transition-all ${echo.unlocked ? 'hover:shadow-md hover:border-echo-present/30 cursor-pointer' : 'opacity-80'}`}
+                  onClick={() => handleEchoClick(echo.id, !echo.unlocked)}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <h3 className="font-medium text-lg">{echo.title}</h3>
                       <div className="flex gap-2 items-center text-xs text-muted-foreground mt-1">
                         <Calendar className="h-3 w-3" />
-                        <span>Created on {formatDate(echo.createdAt)}</span>
+                        <span>Created on {formatDate(echo.created_at)}</span>
                       </div>
                     </div>
                     <Badge className={getMoodStyles(echo.mood)}>
@@ -197,21 +255,21 @@ export default function Dashboard() {
                   
                   <div className="py-3">
                     <WaveformAnimation 
-                      isActive={!echo.isLocked} 
-                      variant={echo.isLocked ? "default" : "playback"}
+                      isActive={echo.unlocked} 
+                      variant={echo.unlocked ? "playback" : "default"}
                       barCount={8}
                     />
                   </div>
                   
                   <div className="mt-4 flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">
-                      {echo.duration}
+                      {formatDuration(echo.duration)}
                     </span>
                     
-                    {echo.isLocked ? (
+                    {!echo.unlocked ? (
                       <div className="flex items-center text-echo-past text-sm">
                         <Clock className="h-4 w-4 mr-1" />
-                        <span>Unlocks on {formatDate(echo.unlockDate)}</span>
+                        <span>Unlocks on {formatDate(echo.unlock_date)}</span>
                       </div>
                     ) : (
                       <Button variant="ghost" size="sm" className="text-echo-present">

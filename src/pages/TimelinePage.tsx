@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,63 +18,74 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+
+type Echo = {
+  id: string;
+  title: string;
+  created_at: string;
+  unlock_date: string;
+  duration: number;
+  unlocked: boolean;
+  mood: string;
+};
 
 export default function TimelinePage() {
   const [view, setView] = useState("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [moodFilter, setMoodFilter] = useState("all");
+  const [echoes, setEchoes] = useState<Echo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   
-  // Sample data for echoes
-  const sampleEchoes = [
-    { 
-      id: 1, 
-      title: "Letter to myself one year from now", 
-      createdAt: new Date("2025-05-11"), 
-      unlockDate: new Date("2026-05-11"),
-      duration: "1:34",
-      mood: "hopeful",
-      isLocked: true,
-    },
-    { 
-      id: 2, 
-      title: "Reflection on my goals", 
-      createdAt: new Date("2025-05-05"), 
-      unlockDate: new Date("2025-05-12"),
-      duration: "2:45",
-      mood: "motivated",
-      isLocked: false,
-    },
-    { 
-      id: 3, 
-      title: "Birthday thoughts", 
-      createdAt: new Date("2025-04-15"), 
-      unlockDate: new Date("2025-07-15"),
-      duration: "3:12",
-      mood: "grateful",
-      isLocked: true,
-    },
-    { 
-      id: 4, 
-      title: "Career aspirations", 
-      createdAt: new Date("2025-03-20"), 
-      unlockDate: new Date("2025-04-20"),
-      duration: "2:08",
-      mood: "ambitious",
-      isLocked: false,
-    },
-    { 
-      id: 5, 
-      title: "Travel memories", 
-      createdAt: new Date("2025-02-10"), 
-      unlockDate: new Date("2025-05-10"),
-      duration: "4:22",
-      mood: "joyful",
-      isLocked: false,
-    },
-  ];
+  // Fetch echoes from Supabase
+  useEffect(() => {
+    const fetchEchoes = async () => {
+      try {
+        setLoading(true);
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData.user) {
+          navigate('/login');
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('echoes')
+          .select('*')
+          .eq('user_id', userData.user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        if (data) {
+          setEchoes(data as Echo[]);
+        }
+      } catch (error) {
+        console.error("Error fetching echoes:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchEchoes();
+    
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('echoes-timeline')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'echoes' }, 
+        fetchEchoes
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [navigate]);
   
   // Filter echoes based on search query and mood filter
-  const filteredEchoes = sampleEchoes.filter((echo) => {
+  const filteredEchoes = echoes.filter((echo) => {
     const matchesSearch = searchQuery 
       ? echo.title.toLowerCase().includes(searchQuery.toLowerCase()) 
       : true;
@@ -86,13 +97,20 @@ export default function TimelinePage() {
   
   // Group echoes by month
   const groupedEchoes = filteredEchoes.reduce((groups, echo) => {
-    const month = echo.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    const month = new Date(echo.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
     if (!groups[month]) {
       groups[month] = [];
     }
     groups[month].push(echo);
     return groups;
-  }, {} as Record<string, typeof sampleEchoes>);
+  }, {} as Record<string, typeof filteredEchoes>);
+
+  // Helper function to format duration
+  const formatDuration = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+  };
   
   return (
     <div className="min-h-screen bg-background">
@@ -143,24 +161,29 @@ export default function TimelinePage() {
         
         <Tabs value={view} className="w-full">
           <TabsContent value="list" className="mt-0">
-            {Object.entries(groupedEchoes).length > 0 ? (
-              Object.entries(groupedEchoes).map(([month, echoes]) => (
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <WaveformAnimation isActive />
+              </div>
+            ) : Object.entries(groupedEchoes).length > 0 ? (
+              Object.entries(groupedEchoes).map(([month, monthEchoes]) => (
                 <div key={month} className="mb-8">
                   <h2 className="text-xl font-semibold mb-4 text-echo-past">{month}</h2>
                   <div className="grid grid-cols-1 gap-4">
-                    {echoes.map((echo) => (
+                    {monthEchoes.map((echo) => (
                       <div 
                         key={echo.id} 
-                        className={`glass-card p-5 rounded-xl transition-all ${echo.isLocked ? 'opacity-80' : 'hover:shadow-md'}`}
+                        className={`glass-card p-5 rounded-xl transition-all ${echo.unlocked ? 'hover:shadow-md cursor-pointer' : 'opacity-80'}`}
+                        onClick={() => echo.unlocked ? navigate(`/echo/${echo.id}`) : null}
                       >
                         <div className="flex items-start justify-between">
                           <div>
                             <h3 className="font-medium text-lg mb-1">{echo.title}</h3>
                             <div className="flex items-center text-sm text-muted-foreground">
                               <Clock className="h-3 w-3 mr-1" />
-                              <span>Recorded on {echo.createdAt.toLocaleDateString()}</span>
+                              <span>Recorded on {new Date(echo.created_at).toLocaleDateString()}</span>
                               <span className="mx-2">•</span>
-                              <span>{echo.duration}</span>
+                              <span>{formatDuration(echo.duration)}</span>
                             </div>
                           </div>
                           
@@ -172,23 +195,27 @@ export default function TimelinePage() {
                         </div>
                         
                         <div className="py-4">
-                          <WaveformAnimation isActive={!echo.isLocked} variant={echo.isLocked ? "default" : "playback"} barCount={8} />
+                          <WaveformAnimation 
+                            isActive={echo.unlocked} 
+                            variant={echo.unlocked ? "playback" : "default"} 
+                            barCount={8} 
+                          />
                         </div>
                         
-                        {echo.isLocked ? (
+                        {!echo.unlocked ? (
                           <div className="flex items-center justify-between mt-2">
                             <div className="flex items-center text-echo-past text-sm">
                               <Lock className="h-4 w-4 mr-1" />
-                              <span>Unlocks on {echo.unlockDate.toLocaleDateString()}</span>
+                              <span>Unlocks on {new Date(echo.unlock_date).toLocaleDateString()}</span>
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {getTimeUntilUnlock(echo.unlockDate)} remaining
+                              {getTimeUntilUnlock(new Date(echo.unlock_date))} remaining
                             </div>
                           </div>
                         ) : (
                           <div className="flex justify-between items-center mt-2">
                             <div className="text-sm text-muted-foreground">
-                              Unlocked on {echo.unlockDate.toLocaleDateString()}
+                              Unlocked on {new Date(echo.unlock_date).toLocaleDateString()}
                             </div>
                             <Button variant="ghost" size="sm" className="text-echo-present">
                               <Play className="mr-1 h-4 w-4" /> Play

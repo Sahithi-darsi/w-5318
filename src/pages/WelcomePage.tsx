@@ -5,10 +5,33 @@ import { TutorialOverlay } from "@/components/onboarding/tutorial-overlay";
 import { WaveformAnimation } from "@/components/ui/waveform-animation";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import Navbar from "@/components/Navbar";
 
 export default function WelcomePage() {
   const navigate = useNavigate();
   const [showTutorial, setShowTutorial] = useState(false);
+  const [username, setUsername] = useState("");
+  
+  // Get user profile on load
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('id', user.id)
+          .single();
+        
+        if (data?.first_name) {
+          setUsername(data.first_name);
+        }
+      }
+    };
+    
+    fetchUserProfile();
+  }, []);
   
   // Show tutorial after a slight delay
   useEffect(() => {
@@ -21,7 +44,6 @@ export default function WelcomePage() {
   
   const handleTutorialClose = () => {
     setShowTutorial(false);
-    // Could store a flag in localStorage to mark tutorial as completed
   };
   
   const handleCreateFirstEcho = () => {
@@ -30,12 +52,15 @@ export default function WelcomePage() {
   
   return (
     <div className="min-h-screen bg-gradient-echo-light dark:bg-gradient-to-br dark:from-echo-past dark:to-echo-present/40 flex flex-col justify-center items-center p-6">
-      <div className="max-w-md w-full text-center">
+      <Navbar />
+      <div className="max-w-md w-full text-center mt-16">
         <div className="h-24 w-24 bg-echo-light dark:bg-echo-dark rounded-full flex items-center justify-center mx-auto mb-8">
           <WaveformAnimation />
         </div>
         
-        <h1 className="text-3xl font-bold mb-6 gradient-text">Welcome to EchoVerse</h1>
+        <h1 className="text-3xl font-bold mb-6 gradient-text">
+          {username ? `Welcome to EchoVerse, ${username}` : "Welcome to EchoVerse"}
+        </h1>
         
         <p className="mb-8 text-lg">
           You're all set up! Ready to create your first audio diary entry?
