@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,14 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				echo: {
+					"past": "#3B2F63",
+					"present": "#6A4E9C",
+					"future": "#4BACBD",
+					"accent": "#FFB84D",
+					"light": "#E5DEFF",
+					"dark": "#1A1F2C",
 				}
 			},
 			borderRadius: {
@@ -84,11 +93,33 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-10px)' },
+				},
+				'pulse-soft': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.8' },
+				},
+				'wave': {
+					'0%': { transform: 'scaleY(1)' },
+					'50%': { transform: 'scaleY(0.5)' },
+					'100%': { transform: 'scaleY(1)' },
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'float': 'float 6s ease-in-out infinite',
+				'pulse-soft': 'pulse-soft 3s ease-in-out infinite',
+				'wave-1': 'wave 1.2s ease-in-out infinite',
+				'wave-2': 'wave 1.8s ease-in-out infinite',
+				'wave-3': 'wave 1.5s ease-in-out infinite',
+			},
+			backgroundImage: {
+				'gradient-echo': 'linear-gradient(135deg, #3B2F63 0%, #6A4E9C 35%, #4BACBD 100%)',
+				'gradient-echo-light': 'linear-gradient(135deg, #E5DEFF 0%, #D3E4FD 100%)',
 			}
 		}
 	},
