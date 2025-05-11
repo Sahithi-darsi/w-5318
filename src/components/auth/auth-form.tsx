@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -383,6 +382,9 @@ export function AuthForm({ mode, onChangeMode, onSubmit }: AuthFormProps) {
             </CardFooter>
           </>
         );
+        
+      default:
+        return null;
     }
   };
   
