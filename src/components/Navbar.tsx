@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -38,42 +37,53 @@ export default function Navbar() {
   
   // Check for notifications (newly unlocked echoes)
   useEffect(() => {
-    // This would typically come from your database
+    // Use localStorage to keep track of which notifications have been shown
     const checkUnlockedEchoes = async () => {
       try {
+        // Get already shown notification IDs from localStorage
+        const shownNotificationIds = JSON.parse(localStorage.getItem('shownNotifications') || '[]');
+        
+        // Get unlocked echoes from database
         const { data, error } = await supabase
           .from('echoes')
           .select('id, title')
           .eq('unlocked', true)
-          .is('notification_shown', false)
           .limit(5);
           
         if (error) throw error;
         
         if (data && data.length > 0) {
-          // Mark notifications as shown in database to prevent repeated notifications
-          await supabase
-            .from('echoes')
-            .update({ notification_shown: true })
-            .in('id', data.map(echo => echo.id));
-            
-          // Show a toast notification for the first one
-          toast({
-            title: "🎉 One of your entries just unlocked!",
-            description: "Listen to your past self.",
-            action: (
-              <Button 
-                onClick={() => window.location.href = `/echo/${data[0].id}`}
-                variant="outline"
-                size="sm"
-              >
-                Listen Now
-              </Button>
-            ),
-          });
+          // Filter out already shown notifications
+          const newNotifications = data.filter(echo => !shownNotificationIds.includes(echo.id));
           
-          setNotifications(data);
-          setHasUnreadNotifications(true);
+          if (newNotifications.length > 0) {
+            // Update localStorage with the new notifications we're about to show
+            localStorage.setItem(
+              'shownNotifications', 
+              JSON.stringify([...shownNotificationIds, ...newNotifications.map(n => n.id)])
+            );
+            
+            // Show a toast notification for the first new one
+            toast({
+              title: "🎉 One of your entries just unlocked!",
+              description: "Listen to your past self.",
+              action: (
+                <Button 
+                  onClick={() => window.location.href = `/echo/${newNotifications[0].id}`}
+                  variant="outline"
+                  size="sm"
+                >
+                  Listen Now
+                </Button>
+              ),
+            });
+            
+            setNotifications(newNotifications);
+            setHasUnreadNotifications(true);
+          } else {
+            // No new notifications, but use existing ones for the notification panel
+            setNotifications(data);
+          }
         }
       } catch (error) {
         console.error("Error checking for unlocked echoes:", error);
