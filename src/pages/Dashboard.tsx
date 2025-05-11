@@ -2,11 +2,40 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { WaveformAnimation } from "@/components/ui/waveform-animation";
-import { ArrowRight, Clock, Plus, Play, Sparkles } from "lucide-react";
+import { ArrowRight, Calendar, Clock, Plus, Play, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+
+// Helper function to get mood styles
+const getMoodStyles = (mood: string) => {
+  switch (mood) {
+    case 'hopeful':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+    case 'motivated':
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+    case 'grateful':
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100';
+    case 'ambitious':
+      return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100';
+    case 'joyful':
+      return 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-100';
+    default:
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100';
+  }
+};
+
+// Helper function to format date
+const formatDate = (dateString: Date) => {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(new Date(dateString));
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -44,29 +73,23 @@ export default function Dashboard() {
   ];
   
   useEffect(() => {
-    // Check for newly unlocked echoes since last visit
-    // In a real app, this would compare with last login time from the backend
-    const unlockedEchoes = sampleEchoes.filter(echo => !echo.isLocked);
-    if (unlockedEchoes.length > 0) {
-      setHasUnlocked(true);
-      setFeaturedEcho(unlockedEchoes[0].id);
-      
-      // Show notification toast
-      toast(
-        <div className="flex flex-col">
-          <div className="font-medium">🎉 One of your entries just unlocked!</div>
-          <div className="text-sm text-muted-foreground">Listen to your past self.</div>
-        </div>,
-        {
-          action: {
-            label: "Listen Now",
-            onClick: () => navigate(`/echo/${unlockedEchoes[0].id}`),
-          },
-          duration: 5000,
+    // Check for newly unlocked echoes
+    const checkUnlockedEchoes = async () => {
+      try {
+        // In a real app, this would be a query to your Supabase database
+        const unlockedEchoes = sampleEchoes.filter(echo => !echo.isLocked);
+        
+        if (unlockedEchoes.length > 0) {
+          setHasUnlocked(true);
+          setFeaturedEcho(unlockedEchoes[0].id);
         }
-      );
-    }
-  }, [navigate]);
+      } catch (error) {
+        console.error("Error checking for unlocked echoes:", error);
+      }
+    };
+    
+    checkUnlockedEchoes();
+  }, []);
   
   const handleCreateEcho = () => {
     navigate("/record");
@@ -116,16 +139,30 @@ export default function Dashboard() {
               onClick={() => navigate(`/echo/${featuredEcho}`)}
             >
               <CardContent className="p-6">
-                <h3 className="font-medium text-lg mb-2">
-                  {sampleEchoes.find(echo => echo.id === featuredEcho)?.title}
-                </h3>
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-medium text-lg mb-1">
+                      {sampleEchoes.find(echo => echo.id === featuredEcho)?.title}
+                    </h3>
+                    <div className="flex gap-2 items-center text-sm text-muted-foreground mb-2">
+                      <Calendar className="h-3 w-3" />
+                      <span>Created on {formatDate(sampleEchoes.find(echo => echo.id === featuredEcho)?.createdAt || new Date())}</span>
+                    </div>
+                  </div>
+                  <Badge className={getMoodStyles(sampleEchoes.find(echo => echo.id === featuredEcho)?.mood || "")}>
+                    {sampleEchoes.find(echo => echo.id === featuredEcho)?.mood.charAt(0).toUpperCase() + sampleEchoes.find(echo => echo.id === featuredEcho)?.mood.slice(1)}
+                  </Badge>
+                </div>
                 <p className="text-sm text-muted-foreground mb-3">
                   Listen to this message you sent to yourself in the past.
                 </p>
                 <div className="py-2">
-                  <WaveformAnimation isActive={true} variant="playback" className="h-12" />
+                  <WaveformAnimation isActive={true} variant="playback" className="h-12" barCount={12} />
                 </div>
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-between items-center mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    {sampleEchoes.find(echo => echo.id === featuredEcho)?.duration}
+                  </div>
                   <Button className="bg-echo-future hover:bg-echo-future/80 text-white">
                     <Play className="mr-1 h-4 w-4" /> Play Now
                   </Button>
@@ -145,18 +182,25 @@ export default function Dashboard() {
                   className={`glass-card p-6 rounded-xl transition-all ${echo.isLocked ? 'opacity-80' : 'hover:shadow-md hover:border-echo-present/30 cursor-pointer'}`}
                   onClick={() => handleEchoClick(echo.id, echo.isLocked)}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-medium">{echo.title}</h3>
-                    {echo.isLocked && (
-                      <div className="flex items-center text-echo-past text-sm">
-                        <Clock className="h-4 w-4 mr-1" />
-                        <span>Locked</span>
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-medium text-lg">{echo.title}</h3>
+                      <div className="flex gap-2 items-center text-xs text-muted-foreground mt-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>Created on {formatDate(echo.createdAt)}</span>
                       </div>
-                    )}
+                    </div>
+                    <Badge className={getMoodStyles(echo.mood)}>
+                      {echo.mood.charAt(0).toUpperCase() + echo.mood.slice(1)}
+                    </Badge>
                   </div>
                   
                   <div className="py-3">
-                    <WaveformAnimation isActive={!echo.isLocked} />
+                    <WaveformAnimation 
+                      isActive={!echo.isLocked} 
+                      variant={echo.isLocked ? "default" : "playback"}
+                      barCount={8}
+                    />
                   </div>
                   
                   <div className="mt-4 flex justify-between items-center">
@@ -165,8 +209,9 @@ export default function Dashboard() {
                     </span>
                     
                     {echo.isLocked ? (
-                      <div className="text-sm text-muted-foreground">
-                        Unlocks on {echo.unlockDate.toLocaleDateString()}
+                      <div className="flex items-center text-echo-past text-sm">
+                        <Clock className="h-4 w-4 mr-1" />
+                        <span>Unlocks on {formatDate(echo.unlockDate)}</span>
                       </div>
                     ) : (
                       <Button variant="ghost" size="sm" className="text-echo-present">

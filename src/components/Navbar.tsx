@@ -22,10 +22,71 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ThemeToggle } from "./ThemeToggle";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 export default function Navbar() {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
+  const [notifications, setNotifications] = useState<{id: string, title: string}[]>([]);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const { toast } = useToast();
+  
+  // Check for notifications (newly unlocked echoes)
+  useEffect(() => {
+    // This would typically come from your database
+    const checkUnlockedEchoes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('echoes')
+          .select('id, title')
+          .eq('unlocked', true)
+          .is('notification_shown', false)
+          .limit(5);
+          
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Mark notifications as shown in database to prevent repeated notifications
+          await supabase
+            .from('echoes')
+            .update({ notification_shown: true })
+            .in('id', data.map(echo => echo.id));
+            
+          // Show a toast notification for the first one
+          toast({
+            title: "🎉 One of your entries just unlocked!",
+            description: "Listen to your past self.",
+            action: (
+              <Button 
+                onClick={() => window.location.href = `/echo/${data[0].id}`}
+                variant="outline"
+                size="sm"
+              >
+                Listen Now
+              </Button>
+            ),
+          });
+          
+          setNotifications(data);
+          setHasUnreadNotifications(true);
+        }
+      } catch (error) {
+        console.error("Error checking for unlocked echoes:", error);
+      }
+    };
+    
+    checkUnlockedEchoes();
+  }, [toast]);
+  
+  const handleNotificationClick = (id: string) => {
+    setHasUnreadNotifications(false);
+    window.location.href = `/echo/${id}`;
+  };
   
   return (
     <header className="sticky top-0 z-50 w-full bg-gradient-echo text-white py-4 px-4 md:px-12 shadow-md">
@@ -73,9 +134,48 @@ export default function Navbar() {
             </NavigationMenu>
             
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
-                <Bell className="h-5 w-5" />
-              </Button>
+              <ThemeToggle />
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-white hover:bg-white/10 relative"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {hasUnreadNotifications && (
+                      <Badge 
+                        className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-red-500"
+                      />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-0">
+                  <div className="p-2 font-medium border-b">Notifications</div>
+                  {notifications.length > 0 ? (
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {notifications.map((notification) => (
+                        <Button 
+                          key={notification.id}
+                          variant="ghost" 
+                          className="w-full justify-start rounded-none border-b text-left p-3 h-auto"
+                          onClick={() => handleNotificationClick(notification.id)}
+                        >
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{notification.title} has unlocked!</span>
+                            <span className="text-xs text-muted-foreground">Click to listen now</span>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No new notifications
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -109,7 +209,50 @@ export default function Navbar() {
           </div>
           
           {/* Mobile Navigation */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center gap-2">
+            <ThemeToggle />
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-white hover:bg-white/10 relative"
+                >
+                  <Bell className="h-5 w-5" />
+                  {hasUnreadNotifications && (
+                    <Badge 
+                      className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-red-500"
+                    />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 p-0">
+                <div className="p-2 font-medium border-b">Notifications</div>
+                {notifications.length > 0 ? (
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {notifications.map((notification) => (
+                      <Button 
+                        key={notification.id}
+                        variant="ghost" 
+                        className="w-full justify-start rounded-none border-b text-left p-3 h-auto"
+                        onClick={() => handleNotificationClick(notification.id)}
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">{notification.title} has unlocked!</span>
+                          <span className="text-xs text-muted-foreground">Click to listen now</span>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No new notifications
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
