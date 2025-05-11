@@ -14,6 +14,7 @@ import RecordPage from "./pages/RecordPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import TimelinePage from "./pages/TimelinePage";
+import AudioPlayerPage from "./pages/AudioPlayerPage";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/timeline" element={<TimelinePage />} />
+            <Route path="/echo/:id" element={<AudioPlayerPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
