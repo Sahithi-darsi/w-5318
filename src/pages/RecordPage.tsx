@@ -9,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format, addMonths, addYears } from "date-fns";
-import { CalendarIcon, Mic, MicOff, Play, Pause, ArrowLeft, Circle } from "lucide-react";
+import { CalendarIcon, Mic, MicOff, Play, Pause, ArrowLeft, Circle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { supabase } from "@/integrations/supabase/client";
+import { v4 as uuidv4 } from "uuid";
 
 const moods = [
   { value: "happy", label: "😊 Happy" },
@@ -155,16 +157,72 @@ export default function RecordPage() {
     };
   }, [audioBlob]);
 
-  const onSubmit = (data: FormValues) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const onSubmit = async (data: FormValues) => {
     if (!audioBlob) {
       toast.error("Please record an audio message first");
       return;
     }
-
-    // Here you would save the data and audio file
-    console.log("Submitting echo:", { ...data, audioDuration: recordingTime });
-    toast.success("Echo sent to your future self!");
-    navigate("/dashboard");
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        throw new Error("You must be logged in to save an echo");
+      }
+      
+      // First upload the audio file to Supabase storage
+      const fileExt = "wav";
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+      
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('echoes')
+        .upload(filePath, audioBlob, {
+          contentType: 'audio/wav'
+        });
+      
+      if (uploadError) {
+        throw new Error(`Error uploading audio: ${uploadError.message}`);
+      }
+      
+      // Get the public URL for the uploaded file
+      const { data: publicUrlData } = supabase.storage
+        .from('echoes')
+        .getPublicUrl(filePath);
+      
+      const audioUrl = publicUrlData.publicUrl;
+      
+      // Insert record into echoes table
+      const { error: insertError } = await supabase
+        .from('echoes')
+        .insert({
+          user_id: user.id,
+          title: data.title,
+          audio_url: audioUrl,
+          duration: recordingTime,
+          mood: data.mood,
+          unlock_date: data.unlockDate.toISOString(),
+          unlocked: false
+        });
+      
+      if (insertError) {
+        throw new Error(`Error saving echo: ${insertError.message}`);
+      }
+      
+      toast.success("Echo sent to your future self!");
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error("Error saving echo:", error);
+      toast.error(error.message || "Failed to save your echo");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -410,8 +468,19 @@ export default function RecordPage() {
                         )}
                       />
                       
-                      <Button type="submit" className="w-full bg-echo-present hover:bg-echo-past">
-                        Send to future you
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-echo-present hover:bg-echo-past"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving your echo...
+                          </>
+                        ) : (
+                          'Send to future you'
+                        )}
                       </Button>
                     </form>
                   </Form>

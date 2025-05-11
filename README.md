@@ -52,6 +52,10 @@ npm run dev
 
 ## What technologies are used for this project?
 
+# Voice11 - Voice Journaling App
+
+A modern voice journaling application built with React, TypeScript, Vite, and Supabase.
+
 This project is built with:
 
 - Vite

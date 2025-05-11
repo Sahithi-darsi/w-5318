@@ -181,7 +181,7 @@ export default function TimelinePage() {
                             <h3 className="font-medium text-lg mb-1">{echo.title}</h3>
                             <div className="flex items-center text-sm text-muted-foreground">
                               <Clock className="h-3 w-3 mr-1" />
-                              <span>Recorded on {new Date(echo.created_at).toLocaleDateString()}</span>
+                              <span>Recorded on {new Date(echo.created_at).toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric'})}</span>
                               <span className="mx-2">•</span>
                               <span>{formatDuration(echo.duration)}</span>
                             </div>
@@ -206,7 +206,7 @@ export default function TimelinePage() {
                           <div className="flex items-center justify-between mt-2">
                             <div className="flex items-center text-echo-past text-sm">
                               <Lock className="h-4 w-4 mr-1" />
-                              <span>Unlocks on {new Date(echo.unlock_date).toLocaleDateString()}</span>
+                              <span>Unlocks on {new Date(echo.unlock_date).toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric'})}</span>
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {getTimeUntilUnlock(new Date(echo.unlock_date))} remaining
@@ -215,7 +215,7 @@ export default function TimelinePage() {
                         ) : (
                           <div className="flex justify-between items-center mt-2">
                             <div className="text-sm text-muted-foreground">
-                              Unlocked on {new Date(echo.unlock_date).toLocaleDateString()}
+                              Unlocked on {new Date(echo.unlock_date).toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric'})}
                             </div>
                             <Button variant="ghost" size="sm" className="text-echo-present">
                               <Play className="mr-1 h-4 w-4" /> Play

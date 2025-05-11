@@ -144,7 +144,7 @@ export default function Navbar() {
                 <NavigationMenuItem>
                   <Link to="/dashboard">
                     <NavigationMenuLink 
-                      className={navigationMenuTriggerStyle() + (isActive("/dashboard") ? " bg-white/20" : "")}
+                      className={`${navigationMenuTriggerStyle()} font-medium ${isActive("/dashboard") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/20"}`}
                     >
                       Dashboard
                     </NavigationMenuLink>
@@ -153,7 +153,7 @@ export default function Navbar() {
                 <NavigationMenuItem>
                   <Link to="/timeline">
                     <NavigationMenuLink 
-                      className={navigationMenuTriggerStyle() + (isActive("/timeline") ? " bg-white/20" : "")}
+                      className={`${navigationMenuTriggerStyle()} font-medium ${isActive("/timeline") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/20"}`}
                     >
                       Timeline
                     </NavigationMenuLink>
@@ -162,7 +162,7 @@ export default function Navbar() {
                 <NavigationMenuItem>
                   <Link to="/record">
                     <NavigationMenuLink 
-                      className={navigationMenuTriggerStyle() + (isActive("/record") ? " bg-white/20" : "")}
+                      className={`${navigationMenuTriggerStyle()} font-medium ${isActive("/record") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/20"}`}
                     >
                       Record
                     </NavigationMenuLink>

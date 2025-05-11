@@ -29,9 +29,9 @@ const getMoodStyles = (mood: string) => {
 
 // Helper function to format date
 const formatDate = (dateString: string) => {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
     year: 'numeric'
   }).format(new Date(dateString));
 };
@@ -73,6 +73,35 @@ export default function Dashboard() {
           return;
         }
         
+        // First check if any locked echoes should be unlocked now
+        const now = new Date().toISOString();
+        const { data: lockedEchoes, error: lockedError } = await supabase
+          .from('echoes')
+          .select('*')
+          .eq('user_id', userData.user.id)
+          .eq('unlocked', false)
+          .lt('unlock_date', now);
+          
+        if (!lockedError && lockedEchoes && lockedEchoes.length > 0) {
+          // Update these echoes to unlocked
+          const echoIds = lockedEchoes.map(echo => echo.id);
+          await supabase
+            .from('echoes')
+            .update({ unlocked: true })
+            .in('id', echoIds);
+          
+          // If we unlocked any echoes, show the most recent one as featured
+          if (lockedEchoes.length > 0) {
+            setHasUnlocked(true);
+            // Sort by unlock date to get most recently unlocked
+            const sortedNewlyUnlocked = [...lockedEchoes].sort((a, b) => 
+              new Date(b.unlock_date).getTime() - new Date(a.unlock_date).getTime()
+            );
+            setFeaturedEcho(sortedNewlyUnlocked[0].id);
+          }
+        }
+        
+        // Get all echoes (now with potentially updated unlocked status)
         const { data, error } = await supabase
           .from('echoes')
           .select('*')
@@ -84,11 +113,14 @@ export default function Dashboard() {
         if (data) {
           setEchoes(data as Echo[]);
           
-          // Check for unlocked echoes
-          const unlockedEchoes = data.filter(echo => echo.unlocked);
-          if (unlockedEchoes.length > 0) {
-            setHasUnlocked(true);
-            setFeaturedEcho(unlockedEchoes[0].id);
+          // If we didn't already set a featured echo from newly unlocked echoes,
+          // check for any unlocked echoes to feature
+          if (!featuredEcho) {
+            const unlockedEchoes = data.filter(echo => echo.unlocked);
+            if (unlockedEchoes.length > 0) {
+              setHasUnlocked(true);
+              setFeaturedEcho(unlockedEchoes[0].id);
+            }
           }
           
           // Update stats
