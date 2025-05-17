@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { AuthForm } from "@/components/auth/auth-form";
+import { SignupForm } from "@/components/ui/signup-form";
 import { WaveformAnimation } from "@/components/ui/waveform-animation";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
@@ -54,6 +54,60 @@ export default function AuthPage() {
       navigate("/welcome");
     }
   };
+
+  const handleSignupSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    try {
+      const formData = new FormData(e.currentTarget);
+      const email = formData.get('email') as string;
+      const password = formData.get('password') as string;
+      const confirmPassword = formData.get('confirmPassword') as string;
+      const firstName = formData.get('firstname') as string;
+      const lastName = formData.get('lastname') as string;
+
+      // Validation
+      if (password !== confirmPassword) {
+        toast.error("Passwords do not match");
+        return;
+      }
+
+      // Show loading toast
+      toast.loading("Creating your account...");
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          },
+        },
+      });
+      
+      // Dismiss loading toast
+      toast.dismiss();
+      
+      if (error) {
+        console.error("Signup error:", error);
+        toast.error(error.message || "Failed to create account. Please try again.");
+        return;
+      }
+      
+      if (data.user) {
+        toast.success("Account created successfully!");
+        navigate("/welcome");
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error("Signup error:", error);
+      toast.error("An unexpected error occurred. Please try again.");
+    }
+  };
+  
+  // For debugging - log the current form mode
+  console.log("Current form mode:", formMode);
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -72,11 +126,17 @@ export default function AuthPage() {
           <div className="absolute -top-20 -right-20 h-40 w-40 bg-echo-accent/20 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-20 -left-20 h-40 w-40 bg-echo-future/20 rounded-full blur-3xl"></div>
           
-          <AuthForm 
-            mode={formMode}
-            onChangeMode={handleChangeMode}
-            onSubmit={handleSubmit}
-          />
+          {formMode === "signup" ? (
+            <div className="relative z-10">
+              <SignupForm onSubmit={handleSignupSubmit} onChangeMode={handleChangeMode} />
+            </div>
+          ) : (
+            <AuthForm 
+              mode={formMode}
+              onChangeMode={handleChangeMode}
+              onSubmit={handleSubmit}
+            />
+          )}
         </div>
       </main>
     </div>

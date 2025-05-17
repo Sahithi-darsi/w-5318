@@ -64,12 +64,12 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				echo: {
-					"past": "#3B2F63",
-					"present": "#6A4E9C",
-					"future": "#4BACBD",
-					"accent": "#FFB84D",
-					"light": "#E5DEFF",
-					"dark": "#1A1F2C",
+					"past": "#4338ca",
+					"present": "#8b5cf6",
+					"future": "#ec4899",
+					"accent": "#f43f5e",
+					"light": "#f3f4f6",
+					"dark": "#030303",
 				}
 			},
 			borderRadius: {
@@ -118,8 +118,10 @@ export default {
 				'wave-3': 'wave 1.5s ease-in-out infinite',
 			},
 			backgroundImage: {
-				'gradient-echo': 'linear-gradient(135deg, #3B2F63 0%, #6A4E9C 35%, #4BACBD 100%)',
-				'gradient-echo-light': 'linear-gradient(135deg, #E5DEFF 0%, #D3E4FD 100%)',
+				'gradient-echo': 'linear-gradient(135deg, #4338ca 0%, #8b5cf6 35%, #ec4899 100%)',
+				'gradient-echo-light': 'linear-gradient(135deg, #f3f4f6 0%, #e2e8f0 100%)',
+				'gradient-indigo-rose': 'linear-gradient(135deg, #4f46e5 0%, #e11d48 100%)',
+				'gradient-dark': 'linear-gradient(to bottom, rgba(3,3,3,0.8) 0%, rgba(3,3,3,0.4) 50%, rgba(3,3,3,0.8) 100%)',
 			}
 		}
 	},
